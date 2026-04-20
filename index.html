@@ -1,0 +1,479 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>中关村难吃榜 v1.0</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+Mono:wght@400;500;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #fafafa; --bg-panel: #f2f2f2; --bg-panel-2: #e8e8e8;
+  --white: #1a1a1a; --white-dim: #3a3a3a; --gray: #6a6a6a; --gray-dark: #d0d0d0;
+  --green: #00a855; --green-glow: rgba(0, 168, 85, 0.15); --green-dim: #008844;
+  --amber: #b86e00; --red: #cc2929; --scan: rgba(0, 0, 0, 0.02);
+}
+html, body { background: var(--bg); color: var(--white); font-family: 'JetBrains Mono', 'Noto Sans Mono', 'Courier New', monospace; font-size: 14px; line-height: 1.6; min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+body::before { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, var(--scan) 2px, var(--scan) 4px); pointer-events: none; z-index: 100; }
+#app { max-width: 480px; margin: 0 auto; padding: 20px 16px 40px; min-height: 100vh; position: relative; z-index: 1; }
+.statusbar { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--gray); padding-bottom: 8px; border-bottom: 1px dashed var(--gray-dark); margin-bottom: 16px; }
+.statusbar .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 1.5s infinite; margin-right: 6px; }
+@keyframes blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.3; } }
+.logo { font-size: 10px; line-height: 1.1; color: var(--white); white-space: pre; text-align: center; margin: 12px 0 8px; }
+.subtitle { text-align: center; font-size: 11px; color: var(--gray); margin-bottom: 4px; letter-spacing: 1px; }
+.subtitle .hl { color: var(--green); }
+.divider { border: none; border-top: 1px dashed var(--gray-dark); margin: 14px 0; }
+.slogan { padding: 16px 14px; background: var(--bg-panel); border-left: 2px solid var(--green); font-size: 14px; color: var(--white); margin: 16px 0; line-height: 1.8; letter-spacing: 0.5px; }
+.slogan::before { content: '// MANIFESTO'; display: block; font-size: 10px; color: var(--green); margin-bottom: 8px; letter-spacing: 2px; font-weight: 500; }
+.prompt { color: var(--green); margin-right: 6px; }
+.cursor { display: inline-block; width: 8px; height: 14px; background: var(--green); vertical-align: middle; margin-left: 2px; animation: cursor 1s step-end infinite; }
+@keyframes cursor { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.btn { display: inline-block; background: transparent; color: var(--white); border: 1px solid var(--white); padding: 11px 16px; font-family: inherit; font-size: 13px; cursor: pointer; text-align: center; transition: all 0.15s; letter-spacing: 1px; text-transform: uppercase; width: 100%; margin: 6px 0; font-weight: 500; }
+.btn:hover, .btn:active { background: var(--white); color: var(--bg); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.btn-primary { border-color: var(--green); color: var(--green); }
+.btn.btn-primary:hover, .btn.btn-primary:active { background: var(--green); color: #fff; box-shadow: 0 0 16px var(--green-glow); }
+.btn.btn-ghost { border-color: var(--gray-dark); color: var(--white-dim); }
+.btn.btn-ghost:hover { border-color: var(--white-dim); color: var(--white); background: transparent; }
+.input-line { display: flex; align-items: center; background: var(--bg-panel); border: 1px solid var(--gray-dark); padding: 10px 12px; margin: 8px 0; transition: border-color 0.2s; }
+.input-line:focus-within { border-color: var(--green); box-shadow: 0 0 8px var(--green-glow); }
+.input-line input, .input-line textarea { flex: 1; background: transparent; border: none; outline: none; color: var(--white); font-family: inherit; font-size: 13px; caret-color: var(--green); resize: none; }
+.input-line textarea { min-height: 60px; line-height: 1.5; }
+.input-line input::placeholder, .input-line textarea::placeholder { color: var(--gray); }
+.label { font-size: 11px; color: var(--white-dim); margin: 14px 0 4px; letter-spacing: 1px; }
+.label-hint { font-size: 10px; color: var(--gray); margin-left: 6px; }
+.checkbox-group { margin: 6px 0; }
+.checkbox-item { display: flex; align-items: flex-start; padding: 12px; margin: 6px 0; border: 1px solid var(--gray-dark); background: var(--bg-panel); cursor: pointer; transition: all 0.15s; gap: 10px; }
+.checkbox-item:hover { border-color: var(--white-dim); }
+.checkbox-item.checked { border-color: var(--green); background: var(--bg-panel-2); }
+.checkbox-box { flex-shrink: 0; width: 14px; height: 14px; border: 1px solid var(--white-dim); margin-top: 3px; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: border-color 0.15s; }
+.checkbox-item.checked .checkbox-box { border-color: var(--green); }
+.checkbox-item.checked .checkbox-box::after { content: 'x'; font-weight: 700; color: var(--green); }
+.checkbox-content { flex: 1; }
+.checkbox-title { font-size: 13px; color: var(--white); font-weight: 600; }
+.checkbox-item.checked .checkbox-title { color: var(--green); }
+.checkbox-en { font-size: 10px; color: var(--gray); margin-top: 2px; letter-spacing: 0.5px; font-style: italic; }
+.checkbox-desc { font-size: 11px; color: var(--white-dim); margin-top: 6px; line-height: 1.6; }
+.checkbox-score { font-size: 11px; color: var(--green); margin-left: auto; flex-shrink: 0; align-self: flex-start; padding-top: 2px; font-weight: 600; }
+.upload-area { border: 1px dashed var(--gray-dark); background: var(--bg-panel); padding: 20px 12px; text-align: center; cursor: pointer; transition: all 0.15s; margin: 6px 0; display: block; }
+.upload-area:hover { border-color: var(--white-dim); }
+.upload-area.has-file { border-color: var(--green); border-style: solid; }
+.upload-icon { font-size: 11px; color: var(--white-dim); line-height: 1.2; white-space: pre; margin-bottom: 8px; letter-spacing: 2px; }
+.upload-area.has-file .upload-icon { color: var(--green); }
+.upload-text { font-size: 12px; color: var(--white-dim); }
+.upload-sub { font-size: 10px; color: var(--gray); margin-top: 4px; }
+.privacy-notice { font-size: 10px; color: var(--amber); background: rgba(184,110,0,0.06); border-left: 2px solid var(--amber); padding: 10px 12px; margin: 6px 0; line-height: 1.7; }
+.privacy-notice::before { content: '[ ! ]  '; font-weight: 700; }
+.rank-item { background: var(--bg-panel); border: 1px solid var(--gray-dark); padding: 14px; margin: 10px 0; transition: all 0.15s; }
+.rank-item:hover { border-color: var(--white-dim); }
+.rank-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.rank-num { font-size: 11px; color: var(--gray); letter-spacing: 1px; }
+.rank-tier { font-size: 13px; }
+.rank-name { font-size: 15px; color: var(--white); font-weight: 700; margin: 4px 0; word-break: break-all; }
+.rank-stats { display: flex; gap: 16px; font-size: 11px; color: var(--white-dim); margin: 8px 0; }
+.rank-score { color: var(--green); font-weight: 700; font-size: 14px; }
+.rank-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0; }
+.tag { font-size: 10px; padding: 3px 7px; border: 1px solid var(--gray-dark); color: var(--white-dim); background: var(--bg-panel-2); }
+.tag.hygiene { border-color: rgba(204,41,41,0.4); color: var(--red); background: rgba(204,41,41,0.06); }
+.agree-btn { display: block; width: 100%; background: transparent; border: 1px solid var(--green); color: var(--green); padding: 9px; font-family: inherit; font-size: 12px; cursor: pointer; margin-top: 10px; transition: all 0.15s; letter-spacing: 0.5px; font-weight: 500; }
+.agree-btn:hover, .agree-btn:active { background: var(--green); color: #fff; box-shadow: 0 0 12px var(--green-glow); }
+.agree-btn.agreed { border-color: var(--gray-dark); color: var(--gray); cursor: not-allowed; }
+.agree-btn.agreed:hover { background: transparent; color: var(--gray); box-shadow: none; }
+.page { display: none; animation: fadeIn 0.3s; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: var(--bg-panel); border: 1px solid var(--green); color: var(--green); padding: 10px 16px; font-size: 12px; z-index: 1000; transition: transform 0.3s; box-shadow: 0 0 20px var(--green-glow); max-width: 80%; word-break: break-all; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.err { border-color: var(--red); color: var(--red); }
+.success-block { text-align: center; padding: 40px 20px; }
+.success-ascii { font-size: 11px; line-height: 1.3; white-space: pre; color: var(--green); margin-bottom: 20px; font-weight: 500; }
+.disclaimer { font-size: 10px; color: var(--gray); text-align: center; margin-top: 24px; line-height: 1.7; padding: 0 10px; }
+.syslog { font-size: 12px; color: var(--white-dim); line-height: 1.9; margin: 14px 0; }
+.syslog .sys { color: var(--green); }
+.syslog .num { color: var(--green); font-weight: 600; }
+.filter-bar { display: flex; gap: 6px; margin: 12px 0; overflow-x: auto; padding-bottom: 4px; }
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-chip { flex-shrink: 0; padding: 5px 12px; border: 1px solid var(--gray-dark); color: var(--white-dim); font-size: 11px; cursor: pointer; white-space: nowrap; transition: all 0.15s; font-family: inherit; }
+.filter-chip.active { border-color: var(--green); color: var(--green); background: rgba(0,168,85,0.06); }
+.empty { text-align: center; padding: 40px 20px; color: var(--gray); font-size: 12px; }
+.score-card { margin: 18px 0; padding: 14px; background: var(--bg-panel); border: 1px solid var(--gray-dark); transition: border-color 0.2s; }
+.score-card.active { border-color: var(--green); }
+.score-label { font-size: 11px; color: var(--white-dim); }
+.score-value { font-size: 22px; color: var(--green); font-weight: 700; letter-spacing: 1px; }
+.score-break { font-size: 10px; color: var(--gray); margin-top: 6px; }
+.page-title { font-size: 15px; color: var(--white); font-weight: 700; margin: 8px 0; }
+.command-line { font-size: 12px; color: var(--white-dim); margin-bottom: 8px; }
+.command-line .prompt { color: var(--green); }
+.loading { text-align: center; padding: 40px 20px; color: var(--gray); font-size: 12px; }
+@media (max-width: 360px) { .logo { font-size: 8px; } }
+</style>
+</head>
+<body>
+<div id="app">
+<div class="statusbar">
+<span><span class="dot"></span>CONNECTED · HAIDIAN::ZGC</span>
+<span id="timeDisplay">--:--:--</span>
+</div>
+
+<div class="page active" id="page-login">
+<div class="logo">╔═══════════════════════════════╗
+║   中 关 村  难 吃 榜          ║
+║   Z G C   B A D  F O O D     ║
+╚═══════════════════════════════╝</div>
+<div class="subtitle">v1.0 · <span class="hl">RADIUS 2KM</span> · ZGC STATION</div>
+<hr class="divider">
+<div class="slogan">我付出的钱和我的胃，<br>有没有被这顿饭羞辱。</div>
+<hr class="divider">
+<div class="syslog">
+<div><span class="sys">&gt; system:</span> 初始化系统...</div>
+<div><span class="sys">&gt; system:</span> 加载餐厅数据库...</div>
+<div><span class="sys">&gt; system:</span> 已收录 <span class="num" id="statRestaurants">0</span> 家上榜餐厅</div>
+<div><span class="sys">&gt; system:</span> 共 <span class="num" id="statVotes">0</span> 条吐槽记录</div>
+<div><span class="sys">&gt; system:</span> 准备就绪<span class="cursor"></span></div>
+</div>
+<hr class="divider">
+<button class="btn btn-primary" onclick="go('rank')">[ ENTER ] 进入榜单</button>
+<button class="btn" onclick="go('submit')">[ NEW ] 提交新餐厅</button>
+<div class="disclaimer">本榜单为用户主观体验分享，不代表官方评价。<br>上榜餐厅由用户投票产生，如有异议可联系下架。</div>
+</div>
+
+<div class="page" id="page-rank">
+<div class="command-line"><span class="prompt">$</span> cat ./zgc_bad_food_ranking.log</div>
+<div class="page-title">中关村难吃榜 · TOP LIST</div>
+<div style="font-size:10px; color:var(--gray); margin:4px 0 10px; line-height:1.8;">
+<div>排序: 羞辱值 = 吐槽均分 × log₂(人数+1) × (1 + 同意票×0.05)</div>
+<div style="margin-top:4px;">分档: <span style="color:var(--white-dim);">💀 ≥600</span> · <span style="color:var(--white-dim);">🔥 300-599</span> · <span style="color:var(--white-dim);">💩 100-299</span> · <span style="color:var(--white-dim);">👀 &lt;100</span></div>
+</div>
+<div class="filter-bar">
+<div class="filter-chip active" onclick="filterRank(this, 'all')">全部</div>
+<div class="filter-chip" onclick="filterRank(this, 'elite')">💀 殿堂级</div>
+<div class="filter-chip" onclick="filterRank(this, 'danger')">🔥 高危</div>
+<div class="filter-chip" onclick="filterRank(this, 'crash')">💩 翻车</div>
+<div class="filter-chip" onclick="filterRank(this, 'watch')">👀 观察区</div>
+</div>
+<div id="rankList"><div class="loading">&gt; loading...</div></div>
+<div class="disclaimer">&gt; end of list</div>
+<div style="margin-top:16px;">
+<button class="btn btn-primary" onclick="go('submit')">[ NEW ] 提交新餐厅</button>
+<button class="btn btn-ghost" onclick="go('login')">[ HOME ] 返回首页</button>
+</div>
+</div>
+
+<div class="page" id="page-submit">
+<div class="command-line"><span class="prompt">$</span> ./submit_bad_food.sh --new</div>
+<div class="page-title">提交新的难吃餐厅</div>
+<hr class="divider">
+<div class="label">&gt; 餐厅名称 <span class="label-hint">[必填]</span></div>
+<div class="input-line"><span class="prompt">$</span><input type="text" id="restaurantName" placeholder="例如：xx 川菜馆（中关村店）" maxlength="30"></div>
+<div style="font-size:10px; color:var(--gray); margin-top:2px;">仅限海淀中关村地铁站 2km 范围内</div>
+<div class="label">&gt; 难吃维度 <span class="label-hint">[多选 · 满分 50]</span></div>
+<div class="checkbox-group" id="badGroup">
+<div class="checkbox-item" data-score="10" data-tag="工业值过载" onclick="toggleCheck(this)">
+<div class="checkbox-box"></div>
+<div class="checkbox-content">
+<div class="checkbox-title">[1] 工业值过载</div>
+<div class="checkbox-en">Industrial Entropy Overload</div>
+<div class="checkbox-desc">流水线味道、增稠剂感、复合调味料、缺乏锅气</div>
+</div>
+<div class="checkbox-score">+10</div>
+</div>
+<div class="checkbox-item" data-score="15" data-tag="期望值断裂" onclick="toggleCheck(this)">
+<div class="checkbox-box"></div>
+<div class="checkbox-content">
+<div class="checkbox-title">[2] 期望值断裂</div>
+<div class="checkbox-en">Expectation Singularity</div>
+<div class="checkbox-desc">营销水分过高，昂贵单价与小红书好评存在严重语义偏移</div>
+</div>
+<div class="checkbox-score">+15</div>
+</div>
+<div class="checkbox-item" data-score="15" data-tag="生理性排斥反馈" onclick="toggleCheck(this)">
+<div class="checkbox-box"></div>
+<div class="checkbox-content">
+<div class="checkbox-title">[3] 生理性排斥反馈</div>
+<div class="checkbox-en">Biochemical Rejection</div>
+<div class="checkbox-desc">重油重盐重糖，脑雾、极度口渴、消耗下午办公算力</div>
+</div>
+<div class="checkbox-score">+15</div>
+</div>
+<div class="checkbox-item" data-score="10" data-tag="语义名实不符" onclick="toggleCheck(this)">
+<div class="checkbox-box"></div>
+<div class="checkbox-content">
+<div class="checkbox-title">[4] 语义名实不符</div>
+<div class="checkbox-en">Semantic Drift</div>
+<div class="checkbox-desc">挂羊头卖狗肉，菜系关键特征提取失败</div>
+</div>
+<div class="checkbox-score">+10</div>
+</div>
+</div>
+<div class="label">&gt; 卫生情况 <span class="label-hint">[多选 · 满分 50]</span></div>
+<div class="checkbox-group" id="hygieneGroup">
+<div class="checkbox-item" data-score="25" data-tag="吃完窜稀" onclick="toggleCheck(this)">
+<div class="checkbox-box"></div>
+<div class="checkbox-content">
+<div class="checkbox-title">[1] 吃完窜稀</div>
+<div class="checkbox-desc">食用后肠胃严重抗议</div>
+</div>
+<div class="checkbox-score">+25</div>
+</div>
+<div class="checkbox-item" data-score="15" data-tag="后厨肉眼可见脏" onclick="toggleCheck(this)">
+<div class="checkbox-box"></div>
+<div class="checkbox-content">
+<div class="checkbox-title">[2] 后厨肉眼可见脏</div>
+<div class="checkbox-desc">明厨亮灶看到不该看到的</div>
+</div>
+<div class="checkbox-score">+15</div>
+</div>
+<div class="checkbox-item" data-score="10" data-tag="就餐环境脏" onclick="toggleCheck(this)">
+<div class="checkbox-box"></div>
+<div class="checkbox-content">
+<div class="checkbox-title">[3] 就餐环境脏</div>
+<div class="checkbox-desc">餐具油腻、桌面黏、地面有异物</div>
+</div>
+<div class="checkbox-score">+10</div>
+</div>
+</div>
+<div class="label">&gt; 补充说明 <span class="label-hint">[选填]</span></div>
+<div class="input-line"><textarea id="note" placeholder="可详细描述你被羞辱的过程..." maxlength="200"></textarea></div>
+<div class="label">&gt; 上传凭证 <span class="label-hint">[必填]</span></div>
+<div class="privacy-notice">隐私提示：上传的图片会在你手机上自动压缩为 300px 缩略图后再上传，我们不保留原图、不公开展示任何凭证，仅用于存证防刷。</div>
+<label class="upload-area" id="uploadArea">
+<input type="file" accept="image/*" id="fileInput" style="display:none" onchange="handleUpload(this)">
+<div class="upload-icon" id="uploadIcon">[  +  U P L O A D  +  ]</div>
+<div class="upload-text" id="uploadText">点击上传付款截图 / 堂食照片</div>
+<div class="upload-sub">支持 JPG / PNG · 本地压缩后 ≤ 100KB</div>
+</label>
+<div class="score-card" id="scoreCard">
+<div style="display:flex; justify-content:space-between; align-items:center;">
+<span class="score-label">&gt; 当前羞辱值</span>
+<span class="score-value" id="totalScore">0</span>
+</div>
+<div class="score-break" id="scoreBreakdown">难吃 0 + 卫生 0</div>
+</div>
+<hr class="divider">
+<button class="btn btn-primary" id="submitBtn" onclick="submitForm()">[ SUBMIT ] 提交吐槽</button>
+<button class="btn btn-ghost" onclick="go('login')">[ CANCEL ] 取消</button>
+<div class="disclaimer">提交即代表你同意用户协议，严禁恶意举报。<br>每个设备对同一家店只能吐槽一次。</div>
+</div>
+
+<div class="page" id="page-success">
+<div class="success-block">
+<div class="success-ascii">╔══════════════╗
+║   ✓  D O N E ║
+╚══════════════╝</div>
+<div style="color:var(--white); font-size:15px; margin:16px 0; font-weight:600;">吐槽提交成功</div>
+<div class="syslog" style="text-align:left; max-width:280px; margin:0 auto;">
+<div><span class="sys">&gt; system:</span> 你的吐槽已进入榜单</div>
+<div><span class="sys">&gt; system:</span> 感谢你为中关村排雷</div>
+</div>
+<div style="margin-top:30px;">
+<button class="btn btn-primary" onclick="go('rank')">[ VIEW ] 查看榜单</button>
+<button class="btn btn-ghost" onclick="go('login')">[ HOME ] 返回首页</button>
+</div>
+</div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const SUPABASE_URL = 'https://jtwyktocrzryaqfvjurj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_jqXxdWnrm4WmoQ2Y9CAxxw_In12xTdX';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function getDeviceUuid() {
+  let id = localStorage.getItem('zgc_device_uuid');
+  if (!id) { id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10); localStorage.setItem('zgc_device_uuid', id); }
+  return id;
+}
+const DEVICE_UUID = getDeviceUuid();
+function getLocalAgreed() { try { return JSON.parse(localStorage.getItem('zgc_agreed') || '[]'); } catch { return []; } }
+function addLocalAgreed(id) { const list = getLocalAgreed(); if (!list.includes(id)) { list.push(id); localStorage.setItem('zgc_agreed', JSON.stringify(list)); } }
+function addLocalVoted(id) { const key = 'zgc_voted'; let list; try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch { list = []; } if (!list.includes(id)) { list.push(id); localStorage.setItem(key, JSON.stringify(list)); } }
+
+function getTier(score) {
+  if (score >= 600) return { label: '💀 殿堂级羞辱', key: 'elite' };
+  if (score >= 300) return { label: '🔥 高危', key: 'danger' };
+  if (score >= 100) return { label: '💩 翻车', key: 'crash' };
+  return { label: '👀 观察区', key: 'watch' };
+}
+
+let currentFilter = 'all';
+let restaurants = [];
+
+async function loadRank() {
+  const { data, error } = await supabase.from('restaurants').select('*').eq('is_hidden', false).order('humiliation_score', { ascending: false }).limit(100);
+  if (error) { showToast('加载失败: ' + error.message, true); return; }
+  restaurants = data || [];
+  renderRank();
+  updateStats();
+}
+
+function updateStats() {
+  const elRest = document.getElementById('statRestaurants');
+  const elVotes = document.getElementById('statVotes');
+  if (elRest) elRest.textContent = restaurants.length;
+  if (elVotes) elVotes.textContent = restaurants.reduce((s, d) => s + (d.voters || 0), 0);
+}
+
+function renderRank() {
+  const list = document.getElementById('rankList');
+  const agreedList = getLocalAgreed();
+  const filtered = currentFilter === 'all' ? restaurants : restaurants.filter(d => getTier(d.humiliation_score).key === currentFilter);
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty"><div style="font-size:11px; line-height:1.8; color:var(--gray);"><div>&gt; SELECT * FROM bad_food_ranking;</div><div>&gt; 0 rows returned.</div></div><div style="margin-top:20px; font-size:13px; color:var(--white-dim);">${restaurants.length === 0 ? '榜单空空如也' : '该分类暂无数据'}</div><div style="margin-top:6px; font-size:11px; color:var(--gray);">${restaurants.length === 0 ? '成为第一个吐槽者，为中关村打工人排雷' : '换个分类看看？'}</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map((item, i) => {
+    const tier = getTier(item.humiliation_score);
+    const agreed = agreedList.includes(item.id);
+    return `<div class="rank-item"><div class="rank-header"><span class="rank-num">#${String(i+1).padStart(2,'0')}</span><span class="rank-tier">${tier.label}</span></div><div class="rank-name">${escapeHtml(item.name)}</div><div class="rank-stats"><span>羞辱值 <span class="rank-score">${item.humiliation_score}</span></span><span>吐槽 ${item.voters}</span><span>同意 ${item.agrees}</span></div><div class="rank-tags">${(item.bad_tags||[]).map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('')}${(item.hygiene_tags||[]).map(t => `<span class="tag hygiene">#${escapeHtml(t)}</span>`).join('')}</div><button class="agree-btn ${agreed?'agreed':''}" onclick="agree(${item.id})" ${agreed?'disabled':''}>${agreed ? '[ √ ] 已同意' : '[ + ] 同意，真的很拉'}</button></div>`;
+  }).join('');
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function filterRank(el, tier) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = tier;
+  renderRank();
+}
+
+async function agree(id) {
+  const agreedList = getLocalAgreed();
+  if (agreedList.includes(id)) return showToast('你已同意过这家店');
+  const { error } = await supabase.rpc('add_agree', { p_restaurant_id: id, p_device_uuid: DEVICE_UUID });
+  if (error) {
+    if (error.code === '23505') { addLocalAgreed(id); showToast('你已同意过这家店'); renderRank(); return; }
+    showToast('操作失败: ' + error.message, true); return;
+  }
+  addLocalAgreed(id);
+  showToast('+1 羞辱值已计入');
+  await loadRank();
+}
+
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  window.scrollTo(0, 0);
+  if (page === 'rank' || page === 'login') loadRank();
+}
+
+function toggleCheck(el) { el.classList.toggle('checked'); updateScore(); }
+
+function updateScore() {
+  let bad = 0, hygiene = 0;
+  document.querySelectorAll('#badGroup .checkbox-item.checked').forEach(el => bad += parseInt(el.dataset.score));
+  document.querySelectorAll('#hygieneGroup .checkbox-item.checked').forEach(el => hygiene += parseInt(el.dataset.score));
+  const total = bad + hygiene;
+  document.getElementById('totalScore').textContent = total;
+  document.getElementById('scoreBreakdown').textContent = `难吃 ${bad} + 卫生 ${hygiene}`;
+  document.getElementById('scoreCard').classList.toggle('active', total > 0);
+}
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 300;
+        let w = img.width, h = img.height;
+        if (w > h && w > MAX) { h = h * MAX / w; w = MAX; }
+        else if (h > MAX) { w = w * MAX / h; h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => { if (!blob) return reject(new Error('压缩失败')); resolve(blob); }, 'image/jpeg', 0.7);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+let uploadedBlob = null;
+async function handleUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { showToast('文件超过 10MB', true); return; }
+  try {
+    const blob = await compressImage(file);
+    uploadedBlob = blob;
+    const kb = Math.round(blob.size / 1024);
+    document.getElementById('uploadArea').classList.add('has-file');
+    document.getElementById('uploadIcon').textContent = '[  √  U P L O A D E D  ]';
+    document.getElementById('uploadText').textContent = `${file.name} (已压缩至 ${kb}KB)`;
+  } catch (e) { showToast('图片处理失败', true); }
+}
+
+async function submitForm() {
+  const btn = document.getElementById('submitBtn');
+  const name = document.getElementById('restaurantName').value.trim();
+  const note = document.getElementById('note').value.trim();
+  const badNodes = document.querySelectorAll('#badGroup .checkbox-item.checked');
+  const hygieneNodes = document.querySelectorAll('#hygieneGroup .checkbox-item.checked');
+  if (!name) return showToast('请填写餐厅名称');
+  if (badNodes.length === 0 && hygieneNodes.length === 0) return showToast('请至少选择一个维度');
+  if (!uploadedBlob) return showToast('请上传凭证');
+  const badTags = [], hygieneTags = [];
+  let badScore = 0, hygieneScore = 0;
+  badNodes.forEach(el => { badScore += parseInt(el.dataset.score); badTags.push(el.dataset.tag); });
+  hygieneNodes.forEach(el => { hygieneScore += parseInt(el.dataset.score); hygieneTags.push(el.dataset.tag); });
+  const totalScore = badScore + hygieneScore;
+  btn.disabled = true;
+  btn.textContent = '[ ... ] 提交中';
+  try {
+    const path = `${DEVICE_UUID}/${Date.now()}.jpg`;
+    const { error: upErr } = await supabase.storage.from('proofs').upload(path, uploadedBlob, { contentType: 'image/jpeg' });
+    if (upErr) throw upErr;
+    const { data, error } = await supabase.rpc('submit_vote', {
+      p_name: name, p_device_uuid: DEVICE_UUID, p_bad_tags: badTags, p_hygiene_tags: hygieneTags,
+      p_score: totalScore, p_note: note || null, p_proof_url: path
+    });
+    if (error) { if (error.code === '23505') throw new Error('你已经吐槽过这家店了'); throw error; }
+    addLocalVoted(data);
+    resetSubmitForm();
+    go('success');
+  } catch (e) { showToast('提交失败: ' + (e.message || '未知错误'), true); }
+  finally { btn.disabled = false; btn.textContent = '[ SUBMIT ] 提交吐槽'; }
+}
+
+function resetSubmitForm() {
+  document.getElementById('restaurantName').value = '';
+  document.getElementById('note').value = '';
+  document.querySelectorAll('.checkbox-item.checked').forEach(el => el.classList.remove('checked'));
+  uploadedBlob = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadArea').classList.remove('has-file');
+  document.getElementById('uploadIcon').textContent = '[  +  U P L O A D  +  ]';
+  document.getElementById('uploadText').textContent = '点击上传付款截图 / 堂食照片';
+  updateScore();
+}
+
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = '> ' + msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function updateTime() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('timeDisplay').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+updateTime();
+setInterval(updateTime, 1000);
+loadRank();
+</script>
+</body>
+</html>
