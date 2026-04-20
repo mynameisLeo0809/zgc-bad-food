@@ -280,7 +280,7 @@ body::before { content: ''; position: fixed; inset: 0; background: repeating-lin
 const SUPABASE_URL = 'https://jtwyktocrzryaqfvjurj.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_jqXxdWnrm4WmoQ2Y9CAxxw_In12xTdX';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function getDeviceUuid() {
   let id = localStorage.getItem('zgc_device_uuid');
@@ -303,7 +303,7 @@ let currentFilter = 'all';
 let restaurants = [];
 
 async function loadRank() {
-  const { data, error } = await supabase.from('restaurants').select('*').eq('is_hidden', false).order('humiliation_score', { ascending: false }).limit(100);
+  const { data, error } = await sbClient.from('restaurants').select('*').eq('is_hidden', false).order('humiliation_score', { ascending: false }).limit(100);
   if (error) { showToast('加载失败: ' + error.message, true); return; }
   restaurants = data || [];
   renderRank();
@@ -344,7 +344,7 @@ function filterRank(el, tier) {
 async function agree(id) {
   const agreedList = getLocalAgreed();
   if (agreedList.includes(id)) return showToast('你已同意过这家店');
-  const { error } = await supabase.rpc('add_agree', { p_restaurant_id: id, p_device_uuid: DEVICE_UUID });
+  const { error } = await sbClient.rpc('add_agree', { p_restaurant_id: id, p_device_uuid: DEVICE_UUID });
   if (error) {
     if (error.code === '23505') { addLocalAgreed(id); showToast('你已同意过这家店'); renderRank(); return; }
     showToast('操作失败: ' + error.message, true); return;
@@ -432,9 +432,9 @@ async function submitForm() {
   btn.textContent = '[ ... ] 提交中';
   try {
     const path = `${DEVICE_UUID}/${Date.now()}.jpg`;
-    const { error: upErr } = await supabase.storage.from('proofs').upload(path, uploadedBlob, { contentType: 'image/jpeg' });
+    const { error: upErr } = await sbClient.storage.from('proofs').upload(path, uploadedBlob, { contentType: 'image/jpeg' });
     if (upErr) throw upErr;
-    const { data, error } = await supabase.rpc('submit_vote', {
+    const { data, error } = await sbClient.rpc('submit_vote', {
       p_name: name, p_device_uuid: DEVICE_UUID, p_bad_tags: badTags, p_hygiene_tags: hygieneTags,
       p_score: totalScore, p_note: note || null, p_proof_url: path
     });
